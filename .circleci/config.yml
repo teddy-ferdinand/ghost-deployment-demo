@@ -1,0 +1,39 @@
+version: 2.1
+jobs:
+  build-and-deploy-on-test:
+    docker:
+      - image: tferdinand/docker-ghost-themes:latest
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          command: VERSION="$(date "+%Y%m%d")-$(echo "${CIRCLE_SHA1}" | cut -c "1-7")" && zip -r breek-${VERSION}.zip . -x *.git* *.zip yarn* npm* *routes.yaml *redirects.yaml *redirects.json *.circleci* *python* README.md
+          name: Creating archive
+      - run:
+          command: bash /root/script/upload_and_enable.sh breek ${testing_api_url} ${testing_api_key}
+          name: Upload theme to testing environment
+  build-and-deploy-on-prod:
+    docker:
+      - image: tferdinand/docker-ghost-themes:latest
+    steps:
+      - checkout
+      - run:
+          command: VERSION="$(date "+%Y%m%d")-$(echo "${CIRCLE_SHA1}" | cut -c "1-7")" && zip -r breek-${VERSION}.zip . -x *.git* *.zip yarn* npm* *routes.yaml *redirects.yaml *redirects.json *.circleci* *python* README.md
+          name: Creating archive
+      - run:
+          command: bash /root/script/upload_and_enable.sh breek ${prod_api_url} ${prod_api_key}
+          name: Upload theme to testing environment
+
+workflows:
+  main:
+    jobs:
+      - build-and-deploy-on-test:
+          filters:
+            branches:
+              only:
+                - testing
+      - build-and-deploy-on-prod:
+          filters:
+            branches:
+              only:
+                - master
